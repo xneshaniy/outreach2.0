@@ -62,10 +62,14 @@ jobs:
 
       - name: Verify db:push command exists
         run: |
-          if ! pnpm run --dry-run db:push 2>/dev/null | grep -q "db:push"; then
-            echo "::error::db:push script not found in package.json"
-            exit 1
-          fi
+          node -e "
+            const pkg = require('./package.json');
+            if (!pkg.scripts || !pkg.scripts['db:push']) {
+              console.error('db:push script missing from package.json');
+              process.exit(1);
+            }
+            console.log('db:push script found:', pkg.scripts['db:push']);
+          "
 
       - name: Run schema push against preview branch
         run: pnpm db:push
