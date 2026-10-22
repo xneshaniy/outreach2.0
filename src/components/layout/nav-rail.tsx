@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   Gauge, Bot, PenLine, MessageCircle, Mail, Contact, Zap,
   Search, BarChart3, LineChart, BrainCircuit, Rocket, Clock, List, Settings,
-  FolderOpen,
+  FolderOpen, BookOpen,
 } from 'lucide-react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
 import { useDashboard } from '@/store';
@@ -37,6 +37,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'CORE',
     items: [
       { href: '/', label: 'Overview', icon: Gauge },
+      { href: '/campaign', label: 'Runbook', icon: BookOpen },
       { href: '/agents/squads', label: 'Squads', icon: Bot },
       { href: '/agents/comms', label: 'Comms', icon: MessageCircle },
       { href: '/agents/workspace', label: 'Workspace', icon: FolderOpen },

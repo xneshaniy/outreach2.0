@@ -7,7 +7,7 @@ import {
   Gauge, Bot, Mail, Contact, MoreHorizontal,
   PenLine, MessageCircle, Zap, FlaskConical, Search,
   BarChart3, LineChart, BrainCircuit, Rocket, Clock, List, Settings,
-  FolderOpen,
+  FolderOpen, BookOpen,
 } from 'lucide-react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
 import { useDashboard } from '@/store';
@@ -40,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Core',
     items: [
       { href: '/', label: 'Overview', icon: Gauge, priority: true },
+      { href: '/campaign', label: 'Runbook', icon: BookOpen, priority: true },
       { href: '/agents/squads', label: 'Squads', icon: Bot, priority: true },
       { href: '/outreach', label: 'Outreach', icon: Mail, countKey: 'outreach', priority: true },
       { href: '/crm', label: 'CRM', icon: Contact, countKey: 'new_leads', priority: true },
