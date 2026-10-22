@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { db } from './db-neon';
 import { users, sessions, googleLoginRequests } from './schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gt, lt } from 'drizzle-orm';
 
 const SALT_LENGTH = 16;
 const KEY_LENGTH = 32;
@@ -115,16 +115,26 @@ export async function authenticate(username: string, password: string): Promise<
     .where(eq(users.username, username.trim().toLowerCase()))
     .limit(1);
   
-  const userRecord = row[0] as UserRecord | undefined;
-  if (!userRecord || !verifyPassword(password, userRecord.passwordHash)) return null;
+  const userRow = row[0];
+  if (!userRow || !verifyPassword(password, userRow.passwordHash)) return null;
+  
+  const userRecord: UserRecord = {
+    id: userRow.id,
+    username: userRow.username,
+    role: userRow.role,
+    created_at: userRow.createdAt.toISOString(),
+    email: userRow.email ?? null,
+    auth_provider: userRow.authProvider ?? 'local',
+    password_hash: userRow.passwordHash,
+  };
   
   return {
     id: userRecord.id,
     username: userRecord.username,
     role: normalizeRole(userRecord.role),
-    created_at: userRecord.createdAt.toISOString(),
+    created_at: userRecord.created_at,
     email: userRecord.email ?? null,
-    auth_provider: userRecord.authProvider ?? 'local',
+    auth_provider: userRecord.auth_provider ?? 'local',
   };
 }
 
@@ -566,6 +576,3 @@ export async function requireAdmin(request: Request): Promise<User> {
   }
   return user;
 }
-
-// Import lt for session cleanup
-import { lt } from 'drizzle-orm';
