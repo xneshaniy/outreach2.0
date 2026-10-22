@@ -2,24 +2,32 @@ import { db } from './db-neon';
 import { 
   contentPosts, leads, sequences, suppression, engagements, signals, 
   experiments, learnings, dailyMetrics, activityLog, notifications, 
-  seedRegistry, messages, sessionSync, llmUsageEvents, users, sessions, googleLoginRequests
+  seedRegistry
 } from './schema';
-import { eq, and, or, desc, asc, sql, lt, gt, gte, lte, inArray, isNull, not, count, sum } from 'drizzle-orm';
+import { eq, and, or, desc, asc, sql, lt, gt, inArray, not, count } from 'drizzle-orm';
 import type { 
   ContentPost, Lead, Sequence, Suppression, Engagement, Signal, 
   Experiment, Learning, DailyMetrics, ActivityEntry, OverviewStats, Alert, 
   FunnelStep, WeeklyKPI, Notification as NotificationType 
 } from '@/types';
 
-// Seed filter helper - excludes seeded records
-function seedFilter(tableName: string, idColumn: string = 'id') {
-  return sql`AND NOT EXISTS (SELECT 1 FROM ${sql.raw(tableName + '_seed_registry')} sr WHERE sr.table_name = ${tableName} AND sr.record_id = CAST(${sql.raw(idColumn)} AS TEXT))`;
+// Convert camelCase object keys to snake_case
+function toSnakeCase<T extends Record<string, unknown>>(obj: T): T {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    result[snakeKey] = value;
+  }
+  return result as T;
+}
+
+function toSnakeCaseArray<T extends Record<string, unknown>>(arr: T[]): T[] {
+  return arr.map(toSnakeCase) as T[];
 }
 
 // ─── Overview ──────────────────────────────────────────
 export async function getOverviewStats(filters?: { excludeSeed?: boolean }): Promise<OverviewStats> {
   const today = new Date().toISOString().slice(0, 10);
-  const sf = filters?.excludeSeed ? ' AND NOT EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = ' : '';
 
   const [postsToday, engagementToday, emailsSent, pipelineCount] = await Promise.all([
     db.select({ c: count() })
@@ -221,10 +229,12 @@ export async function getContentPosts(filters?: {
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'content_posts' AND sr.record_id = CAST(${contentPosts.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(contentPosts)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(contentPosts.createdAt));
+  
+  return toSnakeCaseArray(results) as unknown as ContentPost[];
 }
 
 export async function updateContentStatus(id: string, status: string): Promise<void> {
@@ -256,10 +266,22 @@ export async function getLeads(filters?: {
     : 'createdAt';
   const order = filters?.order === 'asc' ? asc : desc;
 
-  return db.select()
+  const orderByColumn = (() => {
+    switch (sortCol) {
+      case 'score': return leads.score;
+      case 'createdAt': return leads.createdAt;
+      case 'lastTouchAt': return leads.lastTouchAt;
+      case 'company': return leads.company;
+      default: return leads.createdAt;
+    }
+  })();
+
+  const results = await db.select()
     .from(leads)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(order(leads[sortCol as keyof typeof leads]));
+    .orderBy(order(orderByColumn));
+  
+  return toSnakeCaseArray(results) as unknown as Lead[];
 }
 
 export async function updateLeadStatus(id: string, status: string): Promise<void> {
@@ -302,10 +324,12 @@ export async function getSequences(filters?: { status?: string; lead_id?: string
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'sequences' AND sr.record_id = CAST(${sequences.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(sequences)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(sequences.createdAt));
+  
+  return toSnakeCaseArray(results) as unknown as Sequence[];
 }
 
 export async function updateSequenceStatus(id: string, status: string): Promise<void> {
@@ -321,10 +345,12 @@ export async function getSuppression(filters?: { excludeSeed?: boolean }): Promi
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'suppression' AND sr.record_id = CAST(${suppression.email} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(suppression)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(suppression.addedAt));
+  
+  return toSnakeCaseArray(results) as unknown as Suppression[];
 }
 
 // ─── Engagement ────────────────────────────────────────
@@ -343,11 +369,13 @@ export async function getEngagements(filters?: {
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'engagements' AND sr.record_id = CAST(${engagements.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(engagements)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(engagements.createdAt))
     .limit(200);
+  
+  return toSnakeCaseArray(results) as unknown as Engagement[];
 }
 
 // ─── Signals ───────────────────────────────────────────
@@ -366,11 +394,13 @@ export async function getSignals(filters?: {
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'signals' AND sr.record_id = CAST(${signals.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(signals)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(signals.createdAt))
     .limit(200);
+  
+  return toSnakeCaseArray(results) as unknown as Signal[];
 }
 
 // ─── Experiments ───────────────────────────────────────
@@ -382,10 +412,12 @@ export async function getExperiments(filters?: { status?: string; excludeSeed?: 
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'experiments' AND sr.record_id = CAST(${experiments.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(experiments)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(experiments.week), desc(experiments.id));
+  
+  return toSnakeCaseArray(results) as unknown as Experiment[];
 }
 
 export async function getLearnings(filters?: { excludeSeed?: boolean }): Promise<Learning[]> {
@@ -394,10 +426,12 @@ export async function getLearnings(filters?: { excludeSeed?: boolean }): Promise
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'learnings' AND sr.record_id = CAST(${learnings.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(learnings)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(learnings.validatedWeek), desc(learnings.id));
+  
+  return toSnakeCaseArray(results) as unknown as Learning[];
 }
 
 // ─── KPIs ──────────────────────────────────────────────
@@ -407,11 +441,13 @@ export async function getDailyMetrics(days: number = 90, filters?: { excludeSeed
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'daily_metrics' AND sr.record_id = CAST(${dailyMetrics.date} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(dailyMetrics)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(dailyMetrics.date))
     .limit(days);
+  
+  return toSnakeCaseArray(results) as unknown as DailyMetrics[];
 }
 
 export async function getWeeklyKPIs(weeks: number = 12, filters?: { excludeSeed?: boolean }): Promise<WeeklyKPI[]> {
@@ -427,7 +463,7 @@ export async function getWeeklyKPIs(weeks: number = 12, filters?: { excludeSeed?
     .limit(weeks * 7);
 
   // Group by ISO week
-  const weekMap = new Map<string, DailyMetrics[]>();
+  const weekMap = new Map<string, typeof metrics[0][]>();
   for (const m of metrics) {
     const d = new Date(m.date);
     const week = getISOWeek(d);
@@ -438,9 +474,9 @@ export async function getWeeklyKPIs(weeks: number = 12, filters?: { excludeSeed?
 
   return Array.from(weekMap.entries()).map(([week, days]) => {
     const totalSends = days.reduce((s, d) => s + d.sends, 0);
-    const totalReplies = days.reduce((s, d) => s + d.repliesTriaged, 0);
-    const totalImpressions = days.reduce((s, d) => s + d.totalImpressions, 0);
-    const totalEngagement = days.reduce((s, d) => s + d.totalEngagement, 0);
+    const totalReplies = days.reduce((s, d) => s + (d as unknown as { repliesTriaged: number }).repliesTriaged, 0);
+    const totalImpressions = days.reduce((s, d) => s + (d as unknown as { totalImpressions: number }).totalImpressions, 0);
+    const totalEngagement = days.reduce((s, d) => s + (d as unknown as { totalEngagement: number }).totalEngagement, 0);
 
     return {
       week,
@@ -477,11 +513,13 @@ export async function getActivityLog(filters?: {
     conditions.push(not(sql`EXISTS (SELECT 1 FROM seed_registry sr WHERE sr.table_name = 'activity_log' AND sr.record_id = CAST(${activityLog.id} AS TEXT))`));
   }
 
-  return db.select()
+  const results = await db.select()
     .from(activityLog)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(activityLog.ts))
     .limit(filters?.limit ?? 100);
+  
+  return toSnakeCaseArray(results) as unknown as ActivityEntry[];
 }
 
 // ─── Notifications ────────────────────────────────────
@@ -520,11 +558,11 @@ export async function getNotifications(filters?: {
     .orderBy(desc(notifications.createdAt))
     .limit(filters?.limit ?? 50);
 
-  return rows.map(r => ({
+  return toSnakeCaseArray(rows.map(r => ({
     ...r,
     read: r.read === true,
     data: r.data ? JSON.parse(r.data) : null,
-  }));
+  }))) as unknown as NotificationType[];
 }
 
 export async function markNotificationRead(id: number): Promise<void> {

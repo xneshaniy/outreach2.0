@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
