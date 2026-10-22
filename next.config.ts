@@ -1,12 +1,8 @@
-import path from 'path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  serverExternalPackages: ['better-sqlite3'],
-  // Prevent Next.js from inferring a parent workspace root from monorepo traversal, which
-  // changes the standalone output path layout and breaks systemd start paths.
-  outputFileTracingRoot: path.join(__dirname),
+  // Vercel handles output automatically, no need for standalone
+  // serverExternalPackages not needed for Neon (serverless driver)
 };
 
 export default nextConfig;

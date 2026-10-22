@@ -15,11 +15,15 @@
     "test:e2e": "pnpm build && playwright test",
     "prepare:standalone": "bash scripts/prepare-standalone.sh",
     "build:standalone": "pnpm build && pnpm run prepare:standalone",
-    "postbuild": "pnpm run prepare:standalone"
+    "postbuild": "pnpm run prepare:standalone",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2",
+    "@neondatabase/serverless": "^0.10.4",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.36.4",
     "google-auth-library": "^10.5.0",
     "imapflow": "^1.2.9",
     "lucide-react": "^0.563.0",
@@ -35,18 +39,17 @@
       "minimatch": "^9.0.7"
     },
     "onlyBuiltDependencies": [
-      "better-sqlite3",
       "sharp",
       "unrs-resolver"
     ]
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@playwright/test": "^1.56.1",
+    "drizzle-kit": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
